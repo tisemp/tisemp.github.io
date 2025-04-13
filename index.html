@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adicione a marca da campanha à sua foto!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Nunito', sans-serif;
+      background: linear-gradient(to bottom, #6EC6F1, #1D4DA0);
+      color: white;
+      text-align: center;
+      padding-bottom: 3rem;
+    }
+    header {
+      background: white;
+      padding: 1rem;
+    }
+    header img {
+      height: 60px;
+    }
+    h1 {
+      margin-top: 2rem;
+      font-size: 2rem;
+    }
+    p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 1rem auto;
+    }
+    canvas {
+      max-width: 90%;
+      border: 2px solid white;
+      margin-top: 1rem;
+      border-radius: 10px;
+      touch-action: none;
+    }
+    .btn {
+      background-color: white;
+      color: #1D4DA0;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background-color: #f0f0f0;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    label[for="upload"] {
+      display: inline-block;
+      background-color: white;
+      color: #1D4DA0;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-top: 2rem;
+      cursor: pointer;
+    }
+    #controls {
+      margin-top: 1rem;
+    }
+    #controls input[type="range"] {
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="banner.png" alt="Logo da campanha Zízimo Reitor">
+  </header>
+
+  <h1>Personalize sua foto de perfil</h1>
+  <p>Adicione a marca da campanha Zízimo Reitor à sua imagem de perfil para mostrar seu apoio!</p>
+
+  <label for="upload">Escolher imagem</label>
+  <input type="file" id="upload" accept="image/*" />
+  <br />
+  <canvas id="canvas"></canvas>
+  <br />
+  <div id="controls">
+    <label for="scaleRange">Zoom da imagem:</label><br>
+    <input type="range" id="scaleRange" min="0.5" max="2" value="1" step="0.01">
+  </div>
+  <button class="btn" onclick="download()">Baixar imagem com a marca</button>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = new Image();
+    overlay.src = 'logo-da-campanha3.png';
+
+    const scaleInput = document.getElementById('scaleRange');
+
+    let userImage = null;
+    let baseWidth = 0;
+    let baseHeight = 0;
+    let newWidth = 0;
+    let newHeight = 0;
+    let imageX = 0;
+    let imageY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let scale = 1;
+
+    function redrawCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (userImage) {
+        newWidth = baseWidth * scale;
+        newHeight = baseHeight * scale;
+        ctx.drawImage(userImage, imageX, imageY, newWidth, newHeight);
+      }
+      if (overlay.complete && overlay.naturalWidth !== 0) {
+        ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function getTouchPos(canvas, touchEvent) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: touchEvent.touches[0].clientX - rect.left,
+        y: touchEvent.touches[0].clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.offsetX - imageX;
+      dragStartY = e.offsetY - imageY;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        imageX = e.offsetX - dragStartX;
+        imageY = e.offsetY - dragStartY;
+        redrawCanvas();
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      isDragging = true;
+      const pos = getTouchPos(canvas, e);
+      dragStartX = pos.x - imageX;
+      dragStartY = pos.y - imageY;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (isDragging) {
+        e.preventDefault();
+        const pos = getTouchPos(canvas, e);
+        imageX = pos.x - dragStartX;
+        imageY = pos.y - dragStartY;
+        redrawCanvas();
+      }
+    });
+
+    canvas.addEventListener('touchend', () => {
+      isDragging = false;
+    });
+
+    document.getElementById('upload').onchange = function (e) {
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const img = new Image();
+        img.onload = function () {
+          const targetSize = 1080;
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+
+          userImage = img;
+          const imgScale = Math.min(targetSize / img.width, targetSize / img.height);
+          baseWidth = img.width * imgScale;
+          baseHeight = img.height * imgScale;
+          scale = 1;
+          newWidth = baseWidth;
+          newHeight = baseHeight;
+          imageX = (targetSize - newWidth) / 2;
+          imageY = (targetSize - newHeight) / 2;
+
+          redrawCanvas();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    };
+
+    scaleInput.addEventListener('input', () => {
+      scale = parseFloat(scaleInput.value);
+      redrawCanvas();
+    });
+
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'foto-campanha.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+  </script>
+</body>
+</html>
